@@ -326,6 +326,96 @@ endtask
         end
     endtask
 
+        task automatic IDLE_checkv2 ;
+        input bit start_ck;
+        input bit enable_check;
+
+        begin
+            @(negedge clk);
+            start = start_ck;
+            @(posedge clk);
+            #3
+            if (enable_check) begin
+                if (!start_ck) begin
+                    if (uut_control.state == IDLE) begin
+                        if(done == 1'b0 && end_trans == 1'b0 && sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 ) begin
+                            $display("PASSED at %0.t ps", $time);
+                        end else
+                            $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b",$time, done, end_trans, sum_money, price, item_select);
+                    end else
+                            $display("TRANSITION FAILED at %0.t ps - State should be IDLE", $time);
+                end else begin
+                if (start_ck) begin
+                    if (uut_control.state == SELECT) begin
+                        if(done == 1'b0 && end_trans == 1'b0 && sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 ) begin
+                            $display("PASSED at %0.t ps", $time);
+                        end else
+                            $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b",$time, done, end_trans, sum_money, price, item_select);
+                    end else
+                        $display("TRANSITION FAILED at %0.t ps - State should be SELECT", $time);
+                end
+                end
+            end
+            start = 1'b0;           
+        end
+    endtask
+
+    task automatic SELECT_checkv2;
+        input bit cancel_ck;
+        //input bit out_stock_ck;
+        input bit enable_check;
+
+        // output port list fsm
+        begin
+            @(negedge clk);
+            cancel = cancel_ck;
+            item_in = $urandom % 4;
+            @(posedge clk);
+            #3
+            if (enable_check) begin
+                if (cancel_ck) begin
+                    if (uut_control.state == IDLE) begin
+                        if(done == 1'b0 && end_trans == 1'b0 && sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 )
+                            $display("PASSED at %0.t ps", $time);
+                        else
+                            $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b ",$time, done, end_trans, sum_money, price, item_select);
+                    end 
+                    else 
+                        $display("TRANSITION FAILED at %0.t ps - State should be IDLE", $time);
+                end 
+                else
+                if (!cancel_ck && uut_fsm.out_stock) begin
+                    if (uut_control.state == SELECT) begin
+                        if(done == 1'b0 && end_trans == 1'b0 && sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 )
+                            $display("PASSED at %0.t ps", $time);
+                        else
+                            $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b",$time, done, end_trans, sum_money, price, item_select);
+                    end 
+                    else
+                        $display("TRANSITION FAILED at %0.t ps - State should be SELECT", $time);
+                end
+                else
+                if (!cancel_ck && !uut_fsm.out_stock) begin
+                    @(negedge clk);
+                    //#7
+                    if (uut_control.state == RECEIVE_MONEY) begin
+                        if(done == 1'b0 && end_trans == 1'b0 && sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 )
+                            $display("PASSED at %0.t ps", $time);
+                        else
+                            $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b",$time, done, end_trans, sum_money, price, item_select);
+                    end 
+                    else
+                        $display("TRANSITION FAILED at %0.t ps - State should be RECEIVE_MONEY", $time);
+                end
+            end
+            cancel = 1'b0;
+            //force dut.U1.sum_tb = 5'b11110;
+        end
+        #10;
+    endtask
+
+
+
         task automatic RECEIVE_MONEY_check;
         input bit cancel_ck;
         input bit done_money_ck;
@@ -444,19 +534,58 @@ endtask
         reset_without_check;
         RETURN_CHANGE_check(1);
         reset_machine;
-        #10
-        $write("Checking at state RECEIVE_MONEY with cancel = 0 and done_money = 1 and (sum > max_money) = 0 => ");
-        RECEIVE_MONEY_check(1'b0,1'b1,1); // Check6
-        reset_machine;
-        #10       
-        $write("Checking at state RECEIVE_MONEY with cancel = 1 and done_money = 0 and (sum > max_money) = 0 => ");
-        RECEIVE_MONEY_check(1'b1,1'b0,1); // Check7
-        reset_machine;
-        #10
-        $write("Checking at state RECEIVE_MONEY with cancel = 1 and done_money = 1 and (sum > max_money) = 0 => ");
-        RECEIVE_MONEY_check(1'b1,1'b1,1); // Check8
-        reset_machine;
-        #10 $finish;
+        #10;
+    $display("\n=================================================== Simulation ===================================================\n");
+    reset_machine;
+    #10;
+    //$write("Checking at state IDLE with start = 0 => ");
+    IDLE_checkv2(0,0);   // Check1
+    //$write("Checking at state IDLE with start = 1 => ");
+    IDLE_checkv2(1,0);   // Check2
+    //$write("Checking at state SELECT with cancel = 1 => ");
+    SELECT_checkv2(1,0); // Check3
+    //$write("Checking at state SELECT with cancel = 0 and out_stock = 0 => ");
+    IDLE_checkv2(1,0);   
+    SELECT_checkv2(0,0); // Check4
+    $write("Checking at state RECEIVE_MONEY with cancel = 0 and done_money = 0 and (sum > max_money) = 0 => ");
+    RECEIVE_MONEY_check(0,0,1); // Check5
+    $write("Checking at state RECEIVE_MONEY with cancel = 0 and done_money = 1 and (sum > max_money) = 0 => ");
+    RECEIVE_MONEY_check(1'b0,1'b1,1); // Check6
+    //=========================================================================================================
+    reset_machine;
+    #10;
+    IDLE_checkv2(0,0);   // Check1
+    IDLE_checkv2(1,0);   // Check2
+    SELECT_checkv2(1,0); // Check3
+    IDLE_checkv2(1,0);   
+    SELECT_checkv2(0,0); // Check4
+    // //$write("Checking at state RECEIVE_MONEY with cancel = 0 and done_money = 0 and (sum > max_money) = 0 => ");
+    // RECEIVE_MONEY_check(0,0,0); // Check5
+    // $write("Checking at state RECEIVE_MONEY with cancel = 0 and done_money = 1 and (sum > max_money) = 0 => ");
+    // RECEIVE_MONEY_check(1'b0,1'b1,1); // Check6
+    $write("Checking at state RECEIVE_MONEY with cancel = 1 and done_money = 0 and (sum > max_money) = 0 => ");
+    RECEIVE_MONEY_check(1'b1,1'b0,1); // Check7
+    //=========================================================================================================
+    reset_machine;
+    #10
+    IDLE_checkv2(0,0);   // Check1
+    IDLE_checkv2(1,0);   // Check2
+    SELECT_checkv2(1,0); // Check3
+    IDLE_checkv2(1,0);   
+    SELECT_checkv2(0,0); // Check4
+    // //$write("Checking at state RECEIVE_MONEY with cancel = 0 and done_money = 0 and (sum > max_money) = 0 => ");
+    // RECEIVE_MONEY_check(0,0,0); // Check5
+    // $write("Checking at state RECEIVE_MONEY with cancel = 0 and done_money = 1 and (sum > max_money) = 0 => ");
+    // RECEIVE_MONEY_check(1'b0,1'b1,1); // Check6
+    // $write("Checking at state RECEIVE_MONEY with cancel = 1 and done_money = 0 and (sum > max_money) = 0 => ");
+    // RECEIVE_MONEY_check(1'b1,1'b0,1); // Check7
+    $write("Checking at state RECEIVE_MONEY with cancel = 1 and done_money = 1 and (sum > max_money) = 0 => ");
+    RECEIVE_MONEY_check(1'b1,1'b1,1); // Check8
+    // Cannot cover cases where (sum > max_money) = 1
+    
+    #100
+    $display("\n====================================================== End =======================================================");
+    $finish();
     end
    
    initial begin
