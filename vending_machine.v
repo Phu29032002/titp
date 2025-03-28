@@ -100,7 +100,7 @@ assign money_2 = (deno_10) ? 4'd15 : 4'd0;
 assign money_3 = (deno_20) ? 5'd31 : 5'd0;
 assign max_money = 5'b11111;
 //assign enough_money = (pop[item_in] <= sum) ? 1 : 0;
-assign enough_money = 0;
+assign enough_money = 1;
 assign sum_money = sum;
 assign price = pop[item_in];
 
@@ -110,7 +110,8 @@ begin
         IDLE: next_state = (start) ? SELECT : state;
         SELECT: next_state = ((~out_stock) && (~cancel)) ? RECEIVE_MONEY : ((out_stock) && (~cancel)) ? state : IDLE;
         //RECEIVE_MONEY: next_state = ((done_money) || (sum > max_money) && (~cancel)) ? COMPARE : ((~done_money) && (sum < max_money) && (~cancel)) ? state : RETURN_CHANGE;
-        RECEIVE_MONEY: next_state = ((done_money) && (~cancel)) ? COMPARE : ((~done_money) && (sum < max_money) && (~cancel)) ? state : RETURN_CHANGE;
+        //RECEIVE_MONEY: next_state = ((done_money) && (~cancel)) ? COMPARE : ((~done_money) && (sum < max_money) && (~cancel)) ? state : RETURN_CHANGE;
+        RECEIVE_MONEY: next_state = (cancel) ? RETURN_CHANGE : (done_money || (sum > max_money)) ? COMPARE : RECEIVE_MONEY;
         COMPARE: next_state = (enough_money) ? RETURN_CHANGE : PROCESS;
         PROCESS: next_state = (cancel) ? RETURN_CHANGE : RECEIVE_MONEY;
         RETURN_CHANGE: next_state = (continue_buy) ? SELECT : IDLE;
