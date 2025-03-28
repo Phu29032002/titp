@@ -288,13 +288,14 @@ endtask
     logic [7:0] sum = 0;
     task RETURN_CHANGE_check;
         input continue_buy_task;
+        input item_select_task;
         begin
             start = 1; //IDLE
             cancel = 0;
             done_money = 0;
             @(posedge clk);//SELECT
             
-            item_in = 2'b01;
+            item_in = item_select_task;
             @(posedge clk);// RECEIVE
             money = 3'b100;
             sum += money;
@@ -326,186 +327,8 @@ endtask
         end
     endtask
 
-        task automatic IDLE_checkv2 ;
-        input bit start_ck;
-        input bit enable_check;
-
-        begin
-            @(negedge clk);
-            start = start_ck;
-            @(posedge clk);
-            #3
-            if (enable_check) begin
-                if (!start_ck) begin
-                    if (uut_control.state == IDLE) begin
-                        if(done == 1'b0 && end_trans == 1'b0 && sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 ) begin
-                            $display("PASSED at %0.t ps", $time);
-                        end else
-                            $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b",$time, done, end_trans, sum_money, price, item_select);
-                    end else
-                            $display("TRANSITION FAILED at %0.t ps - State should be IDLE", $time);
-                end else begin
-                if (start_ck) begin
-                    if (uut_control.state == SELECT) begin
-                        if(done == 1'b0 && end_trans == 1'b0 && sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 ) begin
-                            $display("PASSED at %0.t ps", $time);
-                        end else
-                            $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b",$time, done, end_trans, sum_money, price, item_select);
-                    end else
-                        $display("TRANSITION FAILED at %0.t ps - State should be SELECT", $time);
-                end
-                end
-            end
-            start = 1'b0;           
-        end
-    endtask
-
-    task automatic SELECT_checkv2;
-        input bit cancel_ck;
-        //input bit out_stock_ck;
-        input bit enable_check;
-
-        // output port list fsm
-        begin
-            @(negedge clk);
-            cancel = cancel_ck;
-            item_in = $urandom % 4;
-            @(posedge clk);
-            #3
-            if (enable_check) begin
-                if (cancel_ck) begin
-                    if (uut_control.state == IDLE) begin
-                        if(done == 1'b0 && end_trans == 1'b0 && sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 )
-                            $display("PASSED at %0.t ps", $time);
-                        else
-                            $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b ",$time, done, end_trans, sum_money, price, item_select);
-                    end 
-                    else 
-                        $display("TRANSITION FAILED at %0.t ps - State should be IDLE", $time);
-                end 
-                else
-                if (!cancel_ck && uut_fsm.out_stock) begin
-                    if (uut_control.state == SELECT) begin
-                        if(done == 1'b0 && end_trans == 1'b0 && sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 )
-                            $display("PASSED at %0.t ps", $time);
-                        else
-                            $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b",$time, done, end_trans, sum_money, price, item_select);
-                    end 
-                    else
-                        $display("TRANSITION FAILED at %0.t ps - State should be SELECT", $time);
-                end
-                else
-                if (!cancel_ck && !uut_fsm.out_stock) begin
-                    @(negedge clk);
-                    //#7
-                    if (uut_control.state == RECEIVE_MONEY) begin
-                        if(done == 1'b0 && end_trans == 1'b0 && sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 )
-                            $display("PASSED at %0.t ps", $time);
-                        else
-                            $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b",$time, done, end_trans, sum_money, price, item_select);
-                    end 
-                    else
-                        $display("TRANSITION FAILED at %0.t ps - State should be RECEIVE_MONEY", $time);
-                end
-            end
-            cancel = 1'b0;
-            //force dut.U1.sum_tb = 5'b11110;
-        end
-        #10;
-    endtask
 
 
-
-        task automatic RECEIVE_MONEY_check;
-        input bit cancel_ck;
-        input bit done_money_ck;
-        input bit enable_check;
-
-        // output port list fsm
-        begin
-            //@(posedge clk);
-            @(negedge clk);
-            cancel = 1'b0;
-            money = $random % 8; // 7
-            #3;
-            @(negedge clk);
-            money = $random % 8; // 15
-            //done_money = 1'b1;
-            #3;
-            done_money = done_money_ck;
-            cancel = cancel_ck;
-            //$display("At %0.t ps: cancel: %b | done_money: %b ",$time, cancel, done_money);
-            @(posedge clk);
-            #3
-            //$display("Time at %0.t ps", $time);
-            if (enable_check) begin
-                // Assign fixed value ((sum_money > 31) ? 1'b1 : 1'b0)
-                case ({cancel,done_money,1'b0})
-                    3'b000: begin
-                        if (uut_control.state == RECEIVE_MONEY) begin
-                            if(done == 1'b0 && end_trans == 1'b0 && sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 )
-                                $display("PASSED at %0.t ps", $time);
-                            else
-                                $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b ",$time, done, end_trans, sum_money, price, item_select);
-                        end
-                        else
-                            $display("TRANSITION FAILED at %0.t ps - State should be RECEIVE_MONEY", $time);    
-                    end
-                    3'b001, 3'b010, 3'b011: begin
-                        //  $display("Time at %0.t ps", $time);
-                        //$display("At %0.t ps: cancel: %b | done_money: %b ",$time, cancel, done_money);
-                        if (uut_control.state == COMPARE) begin
-                            if(done == 1'b0 && end_trans == 1'b0 && sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 )
-                                $display("PASSED at %0.t ps", $time);
-                            else
-                                $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b ",$time, done, end_trans, sum_money, price, item_select);
-                        end
-                        else
-                            $display("TRANSITION FAILED at %0.t ps - State should be COMPARE", $time);   
-                    end
-                    //=========================== MENTION THIS CASE - OUTPUTS OF STATE ===========================================
-                    3'b100, 3'b101, 3'b110, 3'b111: begin
-                        if (uut_control.state == RETURN_CHANGE) begin
-                            if(done == 1'b0 && end_trans == 1'b1 /*&& sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 */)
-                                $display("PASSED at %0.t ps", $time);
-                            else
-                                $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b",$time, done, end_trans, sum_money, price, item_select);
-                        end
-                        else begin
-                            $display("TRANSITION FAILED at %0.t ps - State should be RETURN_CHANGE", $time);   
-                            //$display("At %0.t ps: cancel: %b | done_money: %b ",$time, cancel, done_money);
-
-                        end
-                    end
-                    default: begin
-                        $display("Hello World");
-                        $display("At %0.t ps: cancel: %b | done_money: %b ",$time, cancel, done_money);
-                    end
-                endcase
-            end
-            cancel = 1'b0;
-            done_money = 1'b0;
-        end
-    endtask
-    
-    task automatic reset_machine;
-        begin
-            reset_n = 0;
-            start = 1'b0;
-            done_money = 1'b0;
-            cancel = 1'b0;
-            continue_buy = 1'b0;
-            money = 3'b000;
-            item_in = 2'b00;
-            #20
-            if(done == 1'b0 && end_trans == 1'b0 && sum_money == 8'h00 && price == 8'h00 && item_select == 2'b00 && uut_fsm.next_state == 3'b000) begin
-                $display("Reset successfully");
-            //    $display("At %0.t | done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b | next_state: %b", $time, done, end_trans, sum_money, price, item_select, dut.U1.next_state);
-            end else
-                $display("FAILED at %0.t ps: done: %b | end_trans: %b | sum_money: %b | price: %b | item_select: %b ",$time, done, end_trans, sum_money, price, item_select);
-            #10 reset_n = 1;
-        end
-    endtask
 
     initial begin
         reset;
@@ -529,63 +352,14 @@ endtask
         PROCESS_check(1);        
         @(posedge clk);
         reset_without_check;
-        RETURN_CHANGE_check(0);
+        RETURN_CHANGE_check(0,2'b01);
         @(posedge clk);
         reset_without_check;
-        RETURN_CHANGE_check(1);
-        reset_machine;
-        #10;
-    $display("\n=================================================== Simulation ===================================================\n");
-    reset_machine;
-    #10;
-    //$write("Checking at state IDLE with start = 0 => ");
-    IDLE_checkv2(0,0);   // Check1
-    //$write("Checking at state IDLE with start = 1 => ");
-    IDLE_checkv2(1,0);   // Check2
-    //$write("Checking at state SELECT with cancel = 1 => ");
-    SELECT_checkv2(1,0); // Check3
-    //$write("Checking at state SELECT with cancel = 0 and out_stock = 0 => ");
-    IDLE_checkv2(1,0);   
-    SELECT_checkv2(0,0); // Check4
-    $write("Checking at state RECEIVE_MONEY with cancel = 0 and done_money = 0 and (sum > max_money) = 0 => ");
-    RECEIVE_MONEY_check(0,0,1); // Check5
-    $write("Checking at state RECEIVE_MONEY with cancel = 0 and done_money = 1 and (sum > max_money) = 0 => ");
-    RECEIVE_MONEY_check(1'b0,1'b1,1); // Check6
-    //=========================================================================================================
-    reset_machine;
-    #10;
-    IDLE_checkv2(0,0);   // Check1
-    IDLE_checkv2(1,0);   // Check2
-    SELECT_checkv2(1,0); // Check3
-    IDLE_checkv2(1,0);   
-    SELECT_checkv2(0,0); // Check4
-    // //$write("Checking at state RECEIVE_MONEY with cancel = 0 and done_money = 0 and (sum > max_money) = 0 => ");
-    // RECEIVE_MONEY_check(0,0,0); // Check5
-    // $write("Checking at state RECEIVE_MONEY with cancel = 0 and done_money = 1 and (sum > max_money) = 0 => ");
-    // RECEIVE_MONEY_check(1'b0,1'b1,1); // Check6
-    $write("Checking at state RECEIVE_MONEY with cancel = 1 and done_money = 0 and (sum > max_money) = 0 => ");
-    RECEIVE_MONEY_check(1'b1,1'b0,1); // Check7
-    //=========================================================================================================
-    reset_machine;
-    #10
-    IDLE_checkv2(0,0);   // Check1
-    IDLE_checkv2(1,0);   // Check2
-    SELECT_checkv2(1,0); // Check3
-    IDLE_checkv2(1,0);   
-    SELECT_checkv2(0,0); // Check4
-    // //$write("Checking at state RECEIVE_MONEY with cancel = 0 and done_money = 0 and (sum > max_money) = 0 => ");
-    // RECEIVE_MONEY_check(0,0,0); // Check5
-    // $write("Checking at state RECEIVE_MONEY with cancel = 0 and done_money = 1 and (sum > max_money) = 0 => ");
-    // RECEIVE_MONEY_check(1'b0,1'b1,1); // Check6
-    // $write("Checking at state RECEIVE_MONEY with cancel = 1 and done_money = 0 and (sum > max_money) = 0 => ");
-    // RECEIVE_MONEY_check(1'b1,1'b0,1); // Check7
-    $write("Checking at state RECEIVE_MONEY with cancel = 1 and done_money = 1 and (sum > max_money) = 0 => ");
-    RECEIVE_MONEY_check(1'b1,1'b1,1); // Check8
-    // Cannot cover cases where (sum > max_money) = 1
-    
-    #100
-    $display("\n====================================================== End =======================================================");
-    $finish();
+        RETURN_CHANGE_check(1,2'b00);
+        reset_without_check;
+        RETURN_CHANGE_check(1,2'b10);
+        reset_without_check;
+        RETURN_CHANGE_check(1,2'b11);
     end
    
    initial begin
