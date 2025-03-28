@@ -81,7 +81,7 @@ wire [2:0] nop [3:0];
 wire [4:0] max_money;
 wire [4:0] sum;
 wire [4:0] pop [3:0];
-
+wire enough_money;
 assign pop[0] = 5'd15;
 assign pop[1] = 5'd31;
 assign pop[2] = 5'd7;
@@ -93,14 +93,12 @@ assign nop[2] = 3'd3;
 assign nop[3] = 3'd0; 
 
 assign sum = money_1 + money_2 + money_3;
-//assign out_stock = (nop[item_in] == 0) ? 1'b1 : 1'b0;
-assign out_stock = 0;
+assign out_stock = (nop[item_in] == 0) ? 1'b1 : 1'b0;
 assign money_1 = (deno_5) ? 3'd7 : 3'd0;
 assign money_2 = (deno_10) ? 4'd15 : 4'd0;
 assign money_3 = (deno_20) ? 5'd31 : 5'd0;
 assign max_money = 5'b11111;
-//assign enough_money = (pop[item_in] <= sum) ? 1 : 0;
-assign enough_money = 1;
+assign enough_money = (pop[item_in] <= sum) ? 1 : 0;
 assign sum_money = sum;
 assign price = pop[item_in];
 
@@ -109,9 +107,7 @@ begin
         case (state)
         IDLE: next_state = (start) ? SELECT : state;
         SELECT: next_state = ((~out_stock) && (~cancel)) ? RECEIVE_MONEY : ((out_stock) && (~cancel)) ? state : IDLE;
-        //RECEIVE_MONEY: next_state = ((done_money) || (sum > max_money) && (~cancel)) ? COMPARE : ((~done_money) && (sum < max_money) && (~cancel)) ? state : RETURN_CHANGE;
-        //RECEIVE_MONEY: next_state = ((done_money) && (~cancel)) ? COMPARE : ((~done_money) && (sum < max_money) && (~cancel)) ? state : RETURN_CHANGE;
-        RECEIVE_MONEY: next_state = (cancel) ? RETURN_CHANGE : (done_money || (sum > max_money)) ? COMPARE : RECEIVE_MONEY;
+        RECEIVE_MONEY: next_state = ((done_money) || (sum > max_money) && (~cancel)) ? COMPARE : ((~done_money) && (sum < max_money) && (~cancel)) ? state : RETURN_CHANGE;
         COMPARE: next_state = (enough_money) ? RETURN_CHANGE : PROCESS;
         PROCESS: next_state = (cancel) ? RETURN_CHANGE : RECEIVE_MONEY;
         RETURN_CHANGE: next_state = (continue_buy) ? SELECT : IDLE;
@@ -127,7 +123,6 @@ begin
                 state <= next_state;
 end
 endmodule        
-
 
 module output_loic (                                                                                                                                                                                               
 input [2:0] state,
