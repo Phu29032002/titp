@@ -285,6 +285,49 @@ endtask
         end
 
     endtask
+    logic [7:0] sum = 0;
+    task RETURN_CHANGE_check;
+        input continue_buy_task;
+        begin
+            start = 1; //IDLE
+            cancel = 0;
+            done_money = 0;
+            @(posedge clk);//SELECT
+            
+            item_in = 2'b01;
+            @(posedge clk);// RECEIVE
+            money = 3'b100;
+            sum += money;
+            @(posedge clk); //WAIT
+            money = 3'b010;
+            sum += money;
+            done_money = 1;
+            @(posedge clk);//COMPARE
+            @(posedge clk);
+            continue_buy = continue_buy_task;
+            $display("         =======Check output========        ");
+            if(done && end_trans && (sum_money==sum) && price == uut_fsm.pop[1] && item_select) begin
+                 $display("time: %d | PASSED", $time);  
+            end
+            else begin
+                $display("time: %d | FAILED: end_trans = %b | done = %b | sum_money = %b | price = %b | item_slect = %b ", $time, end_trans, done, sum_money, price, item_select);
+            end
+            @(posedge clk);
+            #1;
+
+            if(continue_buy_task == 1) begin
+                $display("         =======case RETURN_CHANGE check continue_buy = 1 ========        ");
+                STATE_check(SELECT, 0, 0, 0, 0, 0);
+            end
+            else begin
+                $display("         =======case RETURN_CHANGE check continue_buy = 0 ========        ");
+                STATE_check(IDLE, 0, 0, 0, 0, 0);
+            end
+        end
+    endtask
+
+
+
 
     initial begin
         reset;
@@ -306,6 +349,12 @@ endtask
         @(posedge clk);
         reset_without_check;
         PROCESS_check(1);        
+        @(posedge clk);
+        reset_without_check;
+        RETURN_CHANGE_check(0);
+        @(posedge clk);
+        reset_without_check;
+        RETURN_CHANGE_check(1);
     end
    
    initial begin
