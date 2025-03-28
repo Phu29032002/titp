@@ -38,9 +38,9 @@ module tb_fsm_vending;
         .state(state)
     );
 
-    fsm uut_fsm(
+    //fsm uut_fsm(
         //.state(state)
-    );
+   // );
 
     parameter IDLE = 3'd0;
     parameter SELECT = 3'd1;
@@ -191,7 +191,7 @@ endtask
             @(posedge clk);
             @(posedge clk);
             #1;
-            case({cancel, uut_fsm.out_stock})
+            case({cancel, uut_control.U1.out_stock})
                 2'b00: begin
                     $display("         =======case SELECT check cancel = 0 out_stock = 0 ========        ");
                     STATE_check(RECEIVE_MONEY, 0, 0, 0, 0, 0);
@@ -226,7 +226,7 @@ endtask
             @(posedge clk);
             @(posedge clk);
             #1;
-            case(uut_fsm.enough_money)
+            case(uut_control.U1.enough_money)
                 1'b0: begin
                     $display("         =======case COMPARE check enough_money = 0 ========        ");
                     STATE_check(PROCESS, 0, 0, 0, 0, 0);
@@ -242,7 +242,7 @@ endtask
                     end
                 end
                 default: begin
-                    $display("time: %d | FAILED: enough_money = %b", $time, uut_fsm.enough_money);
+                    $display("time: %d | FAILED: enough_money = %b", $time, uut_control.U1.enough_money);
                 end
             endcase
         end
@@ -279,7 +279,7 @@ endtask
                     end
                 end
                 default: begin
-                    $display("time: %d | FAILED: enough_money = %b", $time, uut_fsm.enough_money);
+                    $display("time: %d | FAILED: enough_money = %b", $time, uut_control.U1.enough_money);
                 end
             endcase            
         end
@@ -307,7 +307,7 @@ endtask
             @(posedge clk);
             continue_buy = continue_buy_task;
             $display("         =======Check output========        ");
-            if(done && end_trans && (sum_money==sum) && price == uut_fsm.pop[1] && item_select) begin
+            if(done && end_trans && (sum_money==sum) && price == uut_control.U1.pop[1] && item_select) begin
                  $display("time: %d | PASSED", $time);  
             end
             else begin
@@ -327,6 +327,46 @@ endtask
         end
     endtask
 
+        task RETURN_CHANGE_checkV2;
+        input continue_buy_task;
+        input item_select_task;
+        begin
+            start = 1; //IDLE
+            cancel = 0;
+            done_money = 0;
+            @(posedge clk);//SELECT
+            
+            item_in = item_select_task;
+            @(posedge clk);// RECEIVE
+            money = 3'b100;
+            sum += money;
+            @(posedge clk); //WAIT
+            money = 3'b010;
+            sum += money;
+            done_money = 1;
+            @(posedge clk);//COMPARE
+            @(posedge clk);
+            continue_buy = continue_buy_task;
+            $display("         =======Check output========        ");
+            if(done && end_trans && (sum_money==sum) && price == uut_control.U1.pop[1] && item_select) begin
+                 $display("time: %d | PASSED", $time);  
+            end
+            else begin
+                $display("time: %d | FAILED: end_trans = %b | done = %b | sum_money = %b | price = %b | item_slect = %b ", $time, end_trans, done, sum_money, price, item_select);
+            end
+            @(posedge clk);
+            #1;
+
+            if(continue_buy_task == 1) begin
+                $display("         =======case RETURN_CHANGE check continue_buy = 1 ========        ");
+                STATE_check(SELECT, 0, 0, 0, 0, 0);
+            end
+            else begin
+                $display("         =======case RETURN_CHANGE check continue_buy = 0 ========        ");
+                STATE_check(IDLE, 0, 0, 0, 0, 0);
+            end
+        end
+    endtask
 
 
 
@@ -363,7 +403,7 @@ endtask
     end
    
    initial begin
-    $monitor("time : %d | enough_money = %b", $time, uut_fsm.enough_money);
+    $monitor("time : %d | enough_money = %b", $time, uut_control.U1.enough_money);
    end
 
 endmodule
