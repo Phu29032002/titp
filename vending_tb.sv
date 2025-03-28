@@ -184,12 +184,14 @@ endtask
     task SELECT_check; //SELECT to RECEIVE_MONEY 
         input cancel_task;
         input [1:0] item_in_task;
+        input out_stock_task;
         begin
             start = 1;
             cancel = cancel_task;
             item_in = item_in_task;
             @(posedge clk);
             @(posedge clk);
+            force uut_control.U1.out_stock = out_stock_task;
             #1;
             case({cancel, uut_control.U1.out_stock})
                 2'b00: begin
@@ -215,6 +217,7 @@ endtask
     endtask
     
     task COMPARE_check;
+    input enough_money_task;
         begin
             start = 1; //IDLE
             cancel = 0;
@@ -224,6 +227,7 @@ endtask
             money = 3'b001;
             done_money = 1;
             @(posedge clk);
+            force uut_control.U1.enough_money = enough_money_task;
             @(posedge clk);
             #1;
             case(uut_control.U1.enough_money)
@@ -250,16 +254,18 @@ endtask
 
     task PROCESS_check;
     input cancel_task;
+    input enough_money_task;
         begin
             start = 1; //IDLE
             cancel = 0;
+            item_in = 2'b00;
             @(posedge clk);//SELECT
-            item_in = $urandom_range(0, 3);
-            @(posedge clk);// RECEIVE
-            money = $urandom_range(1, 8);
+            @(posedge clk);
+            money = 3'b001;
             done_money = 1;
-            @(posedge clk);//COMPARE
-            @(posedge clk);//PROCESS
+            @(posedge clk);
+            force uut_control.U1.enough_money = enough_money_task;
+            @(posedge clk);
             cancel = cancel_task;
             @(posedge clk);
             #1;
@@ -289,84 +295,79 @@ endtask
     task RETURN_CHANGE_check;
         input continue_buy_task;
         input item_select_task;
+        input enough_money_task;
+        input cancel_task;
         begin
-            start = 1; //IDLE
-            cancel = 0;
-            done_money = 0;
-            @(posedge clk);//SELECT
-            
-            item_in = item_select_task;
-            @(posedge clk);// RECEIVE
-            money = 3'b100;
-            sum += money;
-            @(posedge clk); //WAIT
-            money = 3'b010;
-            sum += money;
-            done_money = 1;
-            @(posedge clk);//COMPARE
-            @(posedge clk);
-            continue_buy = continue_buy_task;
-            $display("         =======Check output========        ");
-            if(done && end_trans && (sum_money==sum) && price == uut_control.U1.pop[1] && item_select) begin
-                 $display("time: %d | PASSED", $time);  
-            end
-            else begin
-                $display("time: %d | FAILED: end_trans = %b | done = %b | sum_money = %b | price = %b | item_slect = %b ", $time, end_trans, done, sum_money, price, item_select);
-            end
-            @(posedge clk);
-            #1;
+            if(enough_money_task == 1) begin
+                start = 1; //IDLE
+                cancel = 0;
+                item_in = 2'b00;
+                @(posedge clk);//SELECT
+                @(posedge clk);
+                money = 3'b001;
+                done_money = 1;
+                @(posedge clk);
+                force uut_control.U1.enough_money = enough_money_task;
+                @(posedge clk);
+                continue_buy = continue_buy_task;
+                #2;
+                $display("         =======Check output========        ");
+                if(done && end_trans && (sum_money==sum) && price == uut_control.U1.pop[1] && item_select) begin
+                    $display("time: %d | PASSED", $time);  
+                end
+                else begin
+                    $display("time: %d | FAILED: end_trans = %b | done = %b | sum_money = %b | price = %b | item_slect = %b ", $time, end_trans, done, sum_money, price, item_select);
+                end
+                @(posedge clk);
+                #1;
 
-            if(continue_buy_task == 1) begin
-                $display("         =======case RETURN_CHANGE check continue_buy = 1 ========        ");
-                STATE_check(SELECT, 0, 0, 0, 0, 0);
+                if(continue_buy_task == 1) begin
+                    $display("         =======case RETURN_CHANGE check continue_buy = 1 ========        ");
+                    STATE_check(SELECT, 0, 0, 0, 0, 0);
+                end
+                else begin
+                    $display("         =======case RETURN_CHANGE check continue_buy = 0 ========        ");
+                    STATE_check(IDLE, 0, 0, 0, 0, 0);
+                end
             end
             else begin
-                $display("         =======case RETURN_CHANGE check continue_buy = 0 ========        ");
-                STATE_check(IDLE, 0, 0, 0, 0, 0);
+                start = 1; //IDLE
+                cancel = 0;
+                item_in = 2'b00;
+                @(posedge clk);//SELECT
+                @(posedge clk);
+                money = 3'b001;
+                done_money = 1;
+                @(posedge clk);
+                force uut_control.U1.enough_money = enough_money_task;
+                @(posedge clk);
+                cancel = cancel_task;
+                @(posedge clk);
+                continue_buy = continue_buy_task;
+                #2;
+                $display("         =======Check output========        ");
+                if(done && end_trans && (sum_money==sum) && price == uut_control.U1.pop[1] && item_select) begin
+                    $display("time: %d | PASSED", $time);  
+                end
+                else begin
+                    $display("time: %d | FAILED: end_trans = %b | done = %b | sum_money = %b | price = %b | item_slect = %b ", $time, end_trans, done, sum_money, price, item_select);
+                end
+                @(posedge clk);
+                #1;
+
+                if(continue_buy_task == 1) begin
+                    $display("         =======case RETURN_CHANGE check continue_buy = 1 ========        ");
+                    STATE_check(SELECT, 0, 0, 0, 0, 0);
+                end
+                else begin
+                    $display("         =======case RETURN_CHANGE check continue_buy = 0 ========        ");
+                    STATE_check(IDLE, 0, 0, 0, 0, 0);
+                end                
             end
         end
     endtask
 
-        task RETURN_CHANGE_checkV2;
-        input continue_buy_task;
-        input item_select_task;
-        begin
-            start = 1; //IDLE
-            cancel = 0;
-            done_money = 0;
-            @(posedge clk);//SELECT
-            
-            item_in = item_select_task;
-            @(posedge clk);// RECEIVE
-            money = 3'b100;
-            sum += money;
-            @(posedge clk); //WAIT
-            money = 3'b010;
-            sum += money;
-            done_money = 1;
-            @(posedge clk);//COMPARE
-            @(posedge clk);
-            continue_buy = continue_buy_task;
-            $display("         =======Check output========        ");
-            if(done && end_trans && (sum_money==sum) && price == uut_control.U1.pop[1] && item_select) begin
-                 $display("time: %d | PASSED", $time);  
-            end
-            else begin
-                $display("time: %d | FAILED: end_trans = %b | done = %b | sum_money = %b | price = %b | item_slect = %b ", $time, end_trans, done, sum_money, price, item_select);
-            end
-            @(posedge clk);
-            #1;
 
-            if(continue_buy_task == 1) begin
-                $display("         =======case RETURN_CHANGE check continue_buy = 1 ========        ");
-                STATE_check(SELECT, 0, 0, 0, 0, 0);
-            end
-            else begin
-                $display("         =======case RETURN_CHANGE check continue_buy = 0 ========        ");
-                STATE_check(IDLE, 0, 0, 0, 0, 0);
-            end
-        end
-    endtask
 
 
 
@@ -377,29 +378,33 @@ endtask
         @(posedge clk);
         reset;
         //$display("case SELECT check cancel = 1 and item_in = 0");
-        SELECT_check(1, 2'b00);
+        SELECT_check(1, 2'b00,1);
         @(posedge clk);
         reset_without_check;
-        SELECT_check(0, 2'b01);
+        SELECT_check(0, 2'b01, 0);
         @(posedge clk);
         reset_without_check;
-        COMPARE_check;
+        COMPARE_check(0);
         @(posedge clk);
         reset_without_check;
-        PROCESS_check(0);
+        COMPARE_check(1);
+        @(posedge clk);
+        reset_without_check;        
+        PROCESS_check(0,0);
         @(posedge clk);
         reset_without_check;
-        PROCESS_check(1);        
+        PROCESS_check(1,0);        
         @(posedge clk);
         reset_without_check;
-        RETURN_CHANGE_check(0,2'b01);
+        
+        RETURN_CHANGE_check(0,2'b01,1,0);
         @(posedge clk);
         reset_without_check;
-        RETURN_CHANGE_check(1,2'b00);
+        RETURN_CHANGE_check(1,2'b00,1,0);
         reset_without_check;
-        RETURN_CHANGE_check(1,2'b10);
+        RETURN_CHANGE_check(1,2'b10,0,0);
         reset_without_check;
-        RETURN_CHANGE_check(1,2'b11);
+        RETURN_CHANGE_check(1,2'b11,0,1);
     end
    
    initial begin
